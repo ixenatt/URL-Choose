@@ -72,35 +72,15 @@ app.connect("activate", () => {
 
     Core.applyGtkTheme(config);
 
-    const url = ARGV[0];
+    // รองรับกรณีไม่มี URL ส่งเข้ามา (เช่น เปิดแอปตรงๆ) จะได้ค่าเป็น string ว่าง ""
+    const url = ARGV[0] || "";
 
     /*
      * =========================================================
-     * NO URL → OPEN SETTINGS & QUIT APPLICATION ON CLOSE
+     * SKIP CHOOSER (ทำงานเฉพาะตอนที่มี URL ส่งเข้ามาเท่านั้น)
      * =========================================================
      */
-
-    if (!url) {
-        Settings.open(app, null, config, Core, () => {
-            config = Core.loadConfig();
-            if (config && config.language) I18N.setLanguage(config.language);
-            app.quit(); // ปิดแอปทันทีหลังจากกด Save ในหน้า Settings
-        });
-
-        // ดักกรณีผู้ใช้กด Cancel หรือปิดหน้าต่างด้วยวิธีอื่น ให้แอปพลิเคชันจบการทำงานอย่างสมบูรณ์
-        app.connect("window-removed", () => {
-            app.quit();
-        });
-        return;
-    }
-
-    /*
-     * =========================================================
-     * SKIP CHOOSER
-     * =========================================================
-     */
-
-    if (config && !config.always_ask) {
+    if (url && config && !config.always_ask) {
         Core.openDefaultBrowser(url);
         app.quit();
         return;
@@ -108,10 +88,10 @@ app.connect("activate", () => {
 
     /*
      * =========================================================
-     * SHOW CHOOSER
+     * SHOW CHOOSER WINDOW ALWAYS
      * =========================================================
+     * ไม่ว่าจะคลิกลิงก์มา หรือเปิดแอปขึ้นมาตรงๆ ให้รันหน้าจอหลักเสมอ
      */
-
     createChooser(url);
 });
 
@@ -142,9 +122,7 @@ function createChooser(url) {
     /*
      * ESC CLOSE
      */
-
     const esc = new Gtk.EventControllerKey();
-
     esc.connect("key-pressed", (_c, keyval) => {
         if (keyval === Gdk.KEY_Escape) {
             app.quit();
@@ -152,18 +130,15 @@ function createChooser(url) {
         }
         return false;
     });
-
     win.add_controller(esc);
 
     /*
      * BUILD UI
      */
-
     function rebuild() {
         win.set_title(I18N.t("window_title"));
 
         let child = root.get_first_child();
-
         while (child) {
             const next = child.get_next_sibling();
             root.remove(child);
@@ -181,7 +156,6 @@ function createChooser(url) {
             root.append(lblEmpty);
         } else {
             for (const b of browsers) {
-
                 const icon = new Gtk.Image();
                 const gicon = b.info.get_icon();
 
@@ -199,10 +173,13 @@ function createChooser(url) {
 
                 btn.add_css_class("icon-btn");
 
+                // หากไม่มี URL ปุ่มเลือกเบราเซอร์จะทำหน้าที่เป็นแค่พรีวิว (กดแล้วไม่มีผลร้ายแรงหรือกดแล้วแอปปิด)
                 btn.connect("clicked", () => {
-                    Core.openBrowser(b.info, url);
-                    config.last_browser = b.path;
-                    Core.saveConfig(config);
+                    if (url) {
+                        Core.openBrowser(b.info, url);
+                        config.last_browser = b.path;
+                        Core.saveConfig(config);
+                    }
                     app.quit();
                 });
 
@@ -213,7 +190,6 @@ function createChooser(url) {
         /*
          * SETTINGS BUTTON
          */
-
         const settingsBtn = UI.iconButton(
             "preferences-system-symbolic",
             I18N.t("tooltip_settings")
@@ -227,7 +203,7 @@ function createChooser(url) {
                 if (refreshedConfig) {
                     config = refreshedConfig;
                     I18N.setLanguage(config.language);
-                    rebuild();
+                    rebuild(); // อัปเดต UI หน้าต่างหลักตามที่ตั้งค่าทันที
                 }
             });
         });
@@ -236,7 +212,6 @@ function createChooser(url) {
         /*
          * CLOSE BUTTON
          */
-
         const closeBtn = UI.iconButton(
             "window-close-symbolic",
             I18N.t("tooltip_close")
