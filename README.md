@@ -1,226 +1,134 @@
-# 🌐 URL Chooser (GJS)
+นี่คือไฟล์ **`README.md`** ฉบับสมบูรณ์ในรูปแบบภาษาอังกฤษสำหรับระบุบน GitHub ของคุณ โดยได้รับการอัปเดตสิทธิ์การใช้งานเป็น **GPL 3.0** และเพิ่มส่วนคู่มือการติดตั้งแพ็กเกจพึ่งพา (Dependencies) ครอบคลุมทั้งระบบ **Arch Linux, Fedora และ Debian/Ubuntu** เรียบร้อยครับ:
 
-A lightweight **browser selector / URL handler** written in **GNOME JavaScript (GJS)**.
+```markdown
+# URL Chooser (GJS + GTK 4.0)
 
-It intercepts HTTP/HTTPS links and lets you choose which installed browser to open them with.
+[![Language](https://img.shields.io/badge/Language-GJS%20%2F%20JavaScript-yellow)](https://gjs.guide/)
+[![Toolkit](https://img.shields.io/badge/Toolkit-GTK%204.0-blue)](https://www.gtk.org/)
+[![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
 
----
+**URL Chooser** is a lightweight intermediary web browser selection utility written in GJS (GNOME JavaScript) and built with the GTK 4.0 toolkit. When clicking a hyperlink from any external app (such as Discord, Slack, or your favorite Terminal), it launches a fast, modern, transparent pop-up panel letting you pick which browser should open that specific link.
 
 ## ✨ Features
-
-* 🔀 Choose browser before opening any URL
-* 🌐 Detect installed browsers automatically
-* ⚙️ Settings window (GTK4)
-* ⭐ Set as default system browser (xdg-mime)
-* 🧠 Remember last selected browser
-* 🔘 Optional “Always ask” mode
-* 🚀 Fallback to system default browser
-* 🖥️ Works with GNOME / XDG desktop systems
+- 🖥️ **Modern Transparent UI:** Transparent CSS panel setup featuring clean paddings and smooth borders without cluttering your desk background.
+- 🔍 **Auto Detect `.desktop` Apps:** Scans `/usr/share/applications` and filters for browsers satisfying the `Network;WebBrowser;` categories automatically.
+- 🌐 **Full i18n & Icon Support:** Correctly resolves application display names and standard icons depending on your active operating system locale. Includes quick runtime language toggles (English / Thai).
+- ⚙️ **Advanced Preferences:** A native sidebar preferences view for adjustments on Icon Sizes, Themes (Dark/Light/System), and Toggle Prompts that applies modifications globally on the main UI immediately upon saving.
+- ⌨️ **Keyboard Friendliness:** Simply hit `Esc` to instantly close out the interactive panel.
 
 ---
 
-## 📸 Preview
+## 🛠️ System Dependencies
+
+This application is designed for GNU/Linux environments (highly optimized for GNOME Desktop Environments) and relies on GJS alongside GTK4. Please install the appropriate packages for your distribution before running the application:
+
+### 📦 Distro Installation Commands
+
+#### For Debian / Ubuntu / Pop!_OS
+```bash
+sudo apt update
+sudo apt install gjs libgtk-4-dev desktop-file-utils
 
 ```
-+------------------------+
-| Choose Browser         |
-|------------------------|
-| Firefox                |
-| Google Chrome          |
-| Brave                  |
-| Chromium               |
-|                        |
-| [Open Default Browser] |
-| [Settings]            |
-+------------------------+
-```
 
----
-
-## 📦 Requirements
-
-* Linux (tested on GNOME)
-* GJS (GNOME JavaScript)
-* GTK 4
-* xdg-utils
-
-Install dependencies:
-
-### Ubuntu / Debian
+#### For Fedora
 
 ```bash
-sudo apt install gjs libgtk-4-1 xdg-utils
+sudo dnf install gjs gtk4-devel desktop-file-utils
+
 ```
 
-### Fedora
+#### For Arch Linux
 
 ```bash
-sudo dnf install gjs gtk4 xdg-utils
+sudo pacman -Syu
+sudo pacman -S gjs gtk4 desktop-file-utils
+
 ```
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation Guide
 
-Clone repository:
+The framework gets installed in an isolated directory spacing under `/opt/urlchooser` and populates executable symlinks straight to `/usr/local/bin`.
+
+1. Clone this repository locally to your machine:
+```bash
+git clone [https://github.com/yourusername/urlchooser.git](https://github.com/yourusername/urlchooser.git)
+cd urlchooser
+
+```
+
+
+2. Elevate application install script execution rights:
+```bash
+chmod +x install.sh
+
+```
+
+
+3. Trigger execution using root privileges (`sudo`):
+```bash
+sudo ./install.sh
+
+```
+
+
+
+---
+
+## ⚙️ Setting as Default Web Browser
+
+Once configured onto the machine, map your operating system's default HTTP/HTTPS protocol handlers onto URL Chooser.
+
+### Method 1: Desktop Settings Window (GUI)
+
+1. Open your system's **Settings** panel (e.g., GNOME Settings).
+2. Navigate to **Default Applications**.
+3. Under the **Web** row dropdown, pick **URL Chooser**.
+
+### Method 2: Command Line (CLI)
 
 ```bash
-git clone https://github.com/yourname/url-chooser.git
-cd url-chooser
-```
+xdg-settings set default-web-browser urlchooser.desktop
 
-Make script executable:
-
-```bash
-chmod +x urlchooser.js
-```
-
-Move to bin:
-
-```bash
-mkdir -p ~/bin
-mv urlchooser.js ~/bin/urlchooser
 ```
 
 ---
 
-## 🧩 Desktop Integration
+## 📂 Architecture Structure
 
-Create desktop file:
+The system installation structure models an isolated execution space under `/opt` with global linking:
 
-```bash
-mkdir -p ~/.local/share/applications
-nano ~/.local/share/applications/urlchooser.desktop
-```
+```text
+/opt/urlchooser/        # Main application boundaries
+├── urlchooser.js       # App entry point (orchestrates windows & lifecycle)
+├── core.js             # System Core (I/O configuration handlers, desktop file parsers, browser launchers)
+├── ui.js               # UI Factory (CSS configuration, design isolation, widgets styling)
+├── settings.js         # Responsive Multi-page Sidebar dashboard controller
+└── i18n/               # Internationalization module directory
+    ├── index.js        # Translation driver core
+    ├── en.js           # English resource mappings
+    └── th.js           # Thai resource mappings
 
-Paste:
+/usr/local/bin/
+└── urlchooser --------> Symlink pointing directly to /opt/urlchooser/urlchooser.js
 
-```ini
-[Desktop Entry]
-Name=URL Chooser
-Exec=/home/YOUR_USER/bin/urlchooser %u
-Type=Application
-NoDisplay=false
-Terminal=false
+/usr/share/applications/
+└── urlchooser.desktop  # System integration mapping x-scheme-handler/http(s)
 
-MimeType=x-scheme-handler/http;x-scheme-handler/https;
-```
-
-Update system database:
-
-```bash
-xdg-mime default urlchooser.desktop x-scheme-handler/http
-xdg-mime default urlchooser.desktop x-scheme-handler/https
 ```
 
 ---
 
-## ⚙️ Settings
+## 📝 License
 
-Inside the app:
+This program is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-* Enable / disable “Always ask”
-* Set as default browser handler
-* Close settings anytime
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](https://www.google.com/search?q=https://www.gnu.org/licenses/gpl-3.0.html) for more details.
 
----
-
-## 🧠 How it works
-
-1. System opens a URL (`http://...`)
-2. XDG routes it to this app
-3. App reads installed browsers via `Gio.AppInfo`
-4. Shows selection window
-5. Selected browser receives the URL via:
-
-   ```js
-   info.launch_uris([url], null)
-   ```
-
----
-
-## 🧪 Usage
-
-Manually test:
-
-```bash
-./urlchooser https://example.com
-```
-
----
-
-## ⚡ Configuration
-
-Config file stored at:
+See the [LICENSE](https://www.google.com/search?q=LICENSE) file for the full license text.
 
 ```
-~/.config/urlchooser/config.json
+
 ```
-
-Example:
-
-```json
-{
-  "always_ask": true,
-  "last_browser": "Firefox"
-}
-```
-
----
-
-## 🔐 Permissions
-
-This app:
-
-* Does NOT collect data
-* Does NOT send network requests
-* Only launches local applications
-
----
-
-## 🛠️ Roadmap
-
-* [ ] Per-domain browser rules
-* [ ] Search/filter browser list
-* [ ] GTK Adwaita UI upgrade
-* [ ] Tray indicator
-* [ ] “Remember decision for this site”
-* [ ] Flatpak packaging
-* [ ] Keyboard shortcuts
-
----
-
-## 📄 License
-
-MIT License
-
----
-
-## 💡 Why this exists
-
-Linux systems often default to a single browser.
-
-This tool restores control by letting users decide **which browser opens each link**, similar to “Open with…” but for every URL.
-
----
-
-## 🤝 Contributing
-
-PRs welcome:
-
-* UI improvements
-* rule engine
-* GNOME integration
-* packaging (Flatpak / Debian)
-
----
-
-ถ้าคุณอยากต่อยอดอีก ผมสามารถทำให้ได้เช่น:
-
-* 🔥 Flatpak manifest
-* 🧩 libadwaita UI (สวยระดับ GNOME Settings)
-* 🧠 per-domain rule engine (เหมือน smart browser router)
-* ⚡ rofi-like fuzzy search UI
-
-บอกได้เลย 👍
-
