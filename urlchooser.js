@@ -6,14 +6,21 @@ const { Gtk, Gio, GLib, Gdk } = imports.gi;
 
 /*
  * =========================================================
- * PATH SETUP (IMPORTANT)
+ * PATH SETUP (DYNAMIC DEVELOPMENT & PRODUCTION FALLBACK)
  * =========================================================
  */
 
-imports.searchPath.unshift(
-    GLib.get_current_dir()
-);
+const currentDir = GLib.get_current_dir();
+// ตรวจสอบว่ามีไฟล์ core.js อยู่ใน Working Directory ปัจจุบันหรือไม่
+const isDevelopment = GLib.file_test(`${currentDir}/core.js`, GLib.FileTest.EXISTS);
 
+if (isDevelopment) {
+    // ช่วงพัฒนา: ชี้ไปที่โฟลเดอร์ปัจจุบันที่คุณกำลังแก้ไขโค้ดอยู่
+    imports.searchPath.unshift(currentDir);
+} else {
+    // ช่วงใช้งานจริง (Production): ชี้ไปที่ไดเรกทอรีหลักของระบบใน /opt
+    imports.searchPath.unshift("/opt/urlchooser");
+}
 /*
  * =========================================================
  * MODULES
