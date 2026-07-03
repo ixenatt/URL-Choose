@@ -55,19 +55,17 @@ app.connect("activate", () => {
      * =========================================================
      * FIRST-RUN FALLBACK: AUTO-DETECT IF BROWSER LIST IS EMPTY
      * =========================================================
-     * ตรวจสอบว่ามีเบราว์เซอร์บันทึกอยู่หรือไม่ หากไม่มีจะสแกนหาและบันทึกให้อัตโนมัติ
      */
     if (!config || !config.browsers || !Array.isArray(config.browsers) || config.browsers.length === 0) {
         if (typeof Core.autoDetectBrowsers === "function") {
             const detected = Core.autoDetectBrowsers();
             if (detected && detected.length > 0) {
                 config.browsers = detected;
-                Core.saveConfig(config); // บันทึกค่าลง disk ทันที
+                Core.saveConfig(config);
             }
         }
     }
 
-    // กำหนดภาษาเริ่มต้นตามที่บันทึกใน config
     if (config && config.language) {
         I18N.setLanguage(config.language);
     }
@@ -78,7 +76,7 @@ app.connect("activate", () => {
 
     /*
      * =========================================================
-     * NO URL → OPEN SETTINGS
+     * NO URL → OPEN SETTINGS & QUIT APPLICATION ON CLOSE
      * =========================================================
      */
 
@@ -86,6 +84,12 @@ app.connect("activate", () => {
         Settings.open(app, null, config, Core, () => {
             config = Core.loadConfig();
             if (config && config.language) I18N.setLanguage(config.language);
+            app.quit(); // ปิดแอปทันทีหลังจากกด Save ในหน้า Settings
+        });
+
+        // ดักกรณีผู้ใช้กด Cancel หรือปิดหน้าต่างด้วยวิธีอื่น ให้แอปพลิเคชันจบการทำงานอย่างสมบูรณ์
+        app.connect("window-removed", () => {
+            app.quit();
         });
         return;
     }
@@ -156,7 +160,6 @@ function createChooser(url) {
      */
 
     function rebuild() {
-        // อัปเดตชื่อ Title ของ Window เผื่อมีการเปลี่ยนภาษา
         win.set_title(I18N.t("window_title"));
 
         let child = root.get_first_child();
@@ -169,10 +172,6 @@ function createChooser(url) {
 
         const browsers = Core.getBrowsers(config);
 
-        /*
-         * ดักความปลอดภัยขั้นสุดท้าย: หากในระบบสแกนไม่พบเบราว์เซอร์ใดๆ เลย 
-         * จะแสดงข้อความแจ้งเตือนสีขาวแทนที่จะปล่อยให้ UI หน้าจอหลักว่างเปล่า
-         */
         if (browsers.length === 0) {
             const lblEmpty = new Gtk.Label({
                 margin_start: 12,
@@ -221,16 +220,14 @@ function createChooser(url) {
         );
 
         settingsBtn.connect("clicked", () => {
-            // โหลดคอนฟิกล่าสุดก่อนเปิดหน้าต่างเสมอ ป้องกันการขัดแย้งของตัวแปร
             config = Core.loadConfig(); 
             
             Settings.open(app, win, config, Core, () => {
-                // หลังจากกด Save ในหน้าการตั้งค่า ให้ทำการดึงไฟล์คอนฟิกชุดล่าสุดมาอัปเดต UI ทันที
                 let refreshedConfig = Core.loadConfig();
                 if (refreshedConfig) {
-                    config = refreshedConfig; // อัปเดตข้อมูลตัวแปร global config
-                    I18N.setLanguage(config.language); // เปลี่ยนภาษาตามชุดคำแปลทันที
-                    rebuild(); // สั่งรีเฟรชวาดหน้าจอหลักใหม่ (ขยายขนาดไอคอน / เปลี่ยนภาษาของ Tooltip)
+                    config = refreshedConfig;
+                    I18N.setLanguage(config.language);
+                    rebuild();
                 }
             });
         });
