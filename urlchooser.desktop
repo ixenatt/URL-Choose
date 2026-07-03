@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=URL Chooser
+Exec=/home/xenatt/urlchooser/urlchooser.js %u
+Type=Application
+NoDisplay=false
+Terminal=false
+
+MimeType=x-scheme-handler/http;x-scheme-handler/https;
