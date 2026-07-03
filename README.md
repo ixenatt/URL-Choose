@@ -1,4 +1,3 @@
-```markdown
 # URL Chooser (GJS + GTK 4.0)
 
 [![Language](https://img.shields.io/badge/Language-GJS%20%2F%20JavaScript-yellow)](https://gjs.guide/)
@@ -6,6 +5,16 @@
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
 
 **URL Chooser** is a lightweight intermediary web browser selection utility written in GJS (GNOME JavaScript) and built with the GTK 4.0 toolkit. When clicking a hyperlink from any external app (such as Discord, Slack, or your favorite Terminal), it launches a fast, modern, transparent pop-up panel letting you pick which browser should open that specific link.
+
+---
+
+## 📸 Screenshots
+
+| 1. Main Chooser UI | 2. Settings Dashboard | 3. Browser Management |
+| :---: | :---: | :---: |
+| ![Main UI](image/1.png) | ![Settings Theme](image/2.png) | ![Browser Path](image/3.png) |
+
+---
 
 ## ✨ Features
 - 🖥️ **Modern Transparent UI:** Transparent CSS panel setup featuring clean paddings and smooth borders without cluttering your desk background.
@@ -104,6 +113,10 @@ The system installation structure models an isolated execution space under `/opt
 ├── core.js             # System Core (I/O configuration handlers, desktop file parsers, browser launchers)
 ├── ui.js               # UI Factory (CSS configuration, design isolation, widgets styling)
 ├── settings.js         # Responsive Multi-page Sidebar dashboard controller
+├── image/              # Application screenshots directory
+│   ├── 1.png
+│   ├── 2.png
+│   └── 3.png
 └── i18n/               # Internationalization module directory
     ├── index.js        # Translation driver core
     ├── en.js           # English resource mappings
@@ -126,7 +139,5 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](https://www.google.com/search?q=https://www.gnu.org/licenses/gpl-3.0.html) for more details.
 
 See the [LICENSE](https://www.google.com/search?q=LICENSE) file for the full license text.
-
-```
 
 ```
