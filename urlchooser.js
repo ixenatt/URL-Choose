@@ -5,9 +5,9 @@ imports.gi.versions.Gtk = "4.0";
 const { Gtk, Gio, GLib, Gdk } = imports.gi;
 
 /*
- * =========================
+ * =========================================================
  * PATH SETUP (IMPORTANT)
- * =========================
+ * =========================================================
  */
 
 imports.searchPath.unshift(
@@ -15,9 +15,9 @@ imports.searchPath.unshift(
 );
 
 /*
- * =========================
+ * =========================================================
  * MODULES
- * =========================
+ * =========================================================
  */
 
 const Core = imports.core.Core;
@@ -26,17 +26,17 @@ const Settings = imports.settings.Settings;
 const I18N = imports.i18n.index.I18N;
 
 /*
- * =========================
+ * =========================================================
  * APP STATE
- * =========================
+ * =========================================================
  */
 
 let config = null;
 
 /*
- * =========================
+ * =========================================================
  * APP
- * =========================
+ * =========================================================
  */
 
 const app = new Gtk.Application({
@@ -51,6 +51,22 @@ app.connect("activate", () => {
 
     config = Core.loadConfig();
 
+    /*
+     * =========================================================
+     * FIRST-RUN FALLBACK: AUTO-DETECT IF BROWSER LIST IS EMPTY
+     * =========================================================
+     * ตรวจสอบว่ามีเบราว์เซอร์บันทึกอยู่หรือไม่ หากไม่มีจะสแกนหาและบันทึกให้อัตโนมัติ
+     */
+    if (!config || !config.browsers || !Array.isArray(config.browsers) || config.browsers.length === 0) {
+        if (typeof Core.autoDetectBrowsers === "function") {
+            const detected = Core.autoDetectBrowsers();
+            if (detected && detected.length > 0) {
+                config.browsers = detected;
+                Core.saveConfig(config); // บันทึกค่าลง disk ทันที
+            }
+        }
+    }
+
     // กำหนดภาษาเริ่มต้นตามที่บันทึกใน config
     if (config && config.language) {
         I18N.setLanguage(config.language);
@@ -61,9 +77,9 @@ app.connect("activate", () => {
     const url = ARGV[0];
 
     /*
-     * =========================
+     * =========================================================
      * NO URL → OPEN SETTINGS
-     * =========================
+     * =========================================================
      */
 
     if (!url) {
@@ -75,9 +91,9 @@ app.connect("activate", () => {
     }
 
     /*
-     * =========================
+     * =========================================================
      * SKIP CHOOSER
-     * =========================
+     * =========================================================
      */
 
     if (config && !config.always_ask) {
@@ -87,18 +103,18 @@ app.connect("activate", () => {
     }
 
     /*
-     * =========================
+     * =========================================================
      * SHOW CHOOSER
-     * =========================
+     * =========================================================
      */
 
     createChooser(url);
 });
 
 /*
- * =========================
+ * =========================================================
  * CHOOSER UI
- * =========================
+ * =========================================================
  */
 
 function createChooser(url) {
@@ -153,33 +169,46 @@ function createChooser(url) {
 
         const browsers = Core.getBrowsers(config);
 
-        for (const b of browsers) {
-
-            const icon = new Gtk.Image();
-            const gicon = b.info.get_icon();
-
-            if (gicon)
-                icon.set_from_gicon(gicon);
-            else
-                icon.set_from_icon_name("web-browser-symbolic");
-
-            icon.set_pixel_size(config.icon_size || 32);
-
-            const btn = new Gtk.Button({
-                child: icon,
-                tooltip_text: b.info.get_display_name()
+        /*
+         * ดักความปลอดภัยขั้นสุดท้าย: หากในระบบสแกนไม่พบเบราว์เซอร์ใดๆ เลย 
+         * จะแสดงข้อความแจ้งเตือนสีขาวแทนที่จะปล่อยให้ UI หน้าจอหลักว่างเปล่า
+         */
+        if (browsers.length === 0) {
+            const lblEmpty = new Gtk.Label({
+                margin_start: 12,
+                margin_end: 12
             });
+            lblEmpty.set_markup(`<span color="#ffffff">${I18N.t("no_browser")}</span>`);
+            root.append(lblEmpty);
+        } else {
+            for (const b of browsers) {
 
-            btn.add_css_class("icon-btn");
+                const icon = new Gtk.Image();
+                const gicon = b.info.get_icon();
 
-            btn.connect("clicked", () => {
-                Core.openBrowser(b.info, url);
-                config.last_browser = b.path;
-                Core.saveConfig(config);
-                app.quit();
-            });
+                if (gicon)
+                    icon.set_from_gicon(gicon);
+                else
+                    icon.set_from_icon_name("web-browser-symbolic");
 
-            root.append(btn);
+                icon.set_pixel_size(config.icon_size || 32);
+
+                const btn = new Gtk.Button({
+                    child: icon,
+                    tooltip_text: b.info.get_display_name()
+                });
+
+                btn.add_css_class("icon-btn");
+
+                btn.connect("clicked", () => {
+                    Core.openBrowser(b.info, url);
+                    config.last_browser = b.path;
+                    Core.saveConfig(config);
+                    app.quit();
+                });
+
+                root.append(btn);
+            }
         }
 
         /*
@@ -192,16 +221,16 @@ function createChooser(url) {
         );
 
         settingsBtn.connect("clicked", () => {
-            // โหลดคอนฟิกล่าสุดก่อนเปิดหน้าต่างเสมอ ป้องกันตัวแปรหาย
+            // โหลดคอนฟิกล่าสุดก่อนเปิดหน้าต่างเสมอ ป้องกันการขัดแย้งของตัวแปร
             config = Core.loadConfig(); 
             
             Settings.open(app, win, config, Core, () => {
-                // หลังจากบันทึกค่าใน Settings หน้าต่างย่อยเสร็จเรียบร้อย
+                // หลังจากกด Save ในหน้าการตั้งค่า ให้ทำการดึงไฟล์คอนฟิกชุดล่าสุดมาอัปเดต UI ทันที
                 let refreshedConfig = Core.loadConfig();
                 if (refreshedConfig) {
-                    config = refreshedConfig; // เขียนทับ global config ของหน้าจอหลัก
-                    I18N.setLanguage(config.language); // สลับชุดคำแปลภาษาหลักทันที
-                    rebuild(); // สั่งรีเฟรชวาดหน้าจอหลักและขนาดไอคอนใหม่
+                    config = refreshedConfig; // อัปเดตข้อมูลตัวแปร global config
+                    I18N.setLanguage(config.language); // เปลี่ยนภาษาตามชุดคำแปลทันที
+                    rebuild(); // สั่งรีเฟรชวาดหน้าจอหลักใหม่ (ขยายขนาดไอคอน / เปลี่ยนภาษาของ Tooltip)
                 }
             });
         });
@@ -228,8 +257,8 @@ function createChooser(url) {
 }
 
 /*
- * =========================
+ * =========================================================
  * RUN
- * =========================
+ * =========================================================
  */
 app.run([]);
