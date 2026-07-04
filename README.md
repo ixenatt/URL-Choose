@@ -61,7 +61,7 @@ The framework gets installed in an isolated directory spacing under `/opt/urlcho
 
 1. Clone this repository locally to your machine:
 ```bash
-git clone [https://github.com/yourusername/urlchooser.git](https://github.com/yourusername/urlchooser.git)
+git clone [https://github.com/ixenatt/url-choose.git](https://github.com/ixenatt/url-choose.git)
 cd urlchooser
 
 ```
