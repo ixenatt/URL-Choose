@@ -1,111 +1,183 @@
 /*
  * settings.js
- * GJS Classic Module (GTK 4.0) - Fixed General Page, Wider Window, Default Path Set
+ * GJS Classic Module (GTK 4.0) - macOS System Settings-style compact panel
  */
 
 const { Gtk, Gio, GLib } = imports.gi;
 const I18N = imports.i18n.index.I18N;
+const UI = imports.ui.UI;
 
 function open(app, parentWindow, config, Core, onSaveCallback) {
     let localConfig = config ? config : Core.getDefaultConfig();
 
-    // 1. ปรับขนาดหน้าต่างให้กว้างขยายขึ้น (800x500)
+    /* =========================================================================
+     * WINDOW: กระจกฝ้าโปร่งแสง ไม่มีกรอบระบบ (Custom Titlebar)
+     * ========================================================================= */
     const win = new Gtk.Window({
         application: app,
-        title: I18N.t("settings_title"),
         transient_for: parentWindow,
         modal: true,
+        decorated: false,
+        resizable: false,
         default_width: 800,
-        default_height: 500
+        default_height: 700
     });
+    win.add_css_class("transparent-window");
 
     let currentBrowsers = [];
     if (localConfig.browsers && Array.isArray(localConfig.browsers)) {
         currentBrowsers = [...localConfig.browsers];
     }
 
-    const mainBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 0 });
-    const sidebar = new Gtk.StackSidebar();
+    const outerBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+    outerBox.add_css_class("settings-panel");
+
+    /* =========================================================================
+     * CUSTOM TITLE BAR (ลากย้ายหน้าต่างได้ + ปุ่มปิด)
+     * ========================================================================= */
+    const titleRow = new Gtk.Box({
+        orientation: Gtk.Orientation.HORIZONTAL,
+        margin_top: 10, margin_bottom: 4, margin_start: 12, margin_end: 12
+    });
+
+    const titleLeftSpacer = new Gtk.Box();
+    titleLeftSpacer.set_size_request(32, -1);
+
+    const lblTitle = new Gtk.Label({ label: I18N.t("settings_title"), hexpand: true, halign: Gtk.Align.CENTER });
+    lblTitle.add_css_class("settings-title");
+
+    const btnTitleClose = UI.iconButton("window-close-symbolic", I18N.t("tooltip_close"));
+    btnTitleClose.add_css_class("close-btn");
+    btnTitleClose.connect("clicked", () => win.close());
+
+    titleRow.append(titleLeftSpacer);
+    titleRow.append(lblTitle);
+    titleRow.append(btnTitleClose);
+
+    const dragHandle = new Gtk.WindowHandle();
+    dragHandle.set_child(titleRow);
+    outerBox.append(dragHandle);
+
+    /* =========================================================================
+     * BODY: Sidebar (ไอคอน+ข้อความ) ทางซ้าย + เนื้อหาทางขวา
+     * ========================================================================= */
+    const bodyBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, vexpand: true });
+
+    const sidebarList = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.SINGLE });
+    sidebarList.add_css_class("nav-sidebar");
+
+    const sidebarScroll = new Gtk.ScrolledWindow({
+        hscrollbar_policy: Gtk.PolicyType.NEVER,
+        vexpand: true
+    });
+    sidebarScroll.set_child(sidebarList);
+    sidebarScroll.set_size_request(170, -1);
+
     const stack = new Gtk.Stack({
-        transition_type: Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
-        transition_duration: 250,
-        hexpand: true, // บังคับให้พื้นที่หน้าเพจเนื้อหาฝั่งขวาขยายเต็มความกว้างหน้าต่าง
+        transition_type: Gtk.StackTransitionType.CROSSFADE,
+        transition_duration: 150,
+        hexpand: true,
         vexpand: true
     });
 
-    sidebar.set_stack(stack);
-    sidebar.set_size_request(180, -1); // ปรับขนาดความกว้างเมนูซ้ายเล็กน้อยเพื่อความสมดุล
+    let firstSidebarRow = null;
 
-    mainBox.append(sidebar);
-    const contentSeparator = new Gtk.Separator({ orientation: Gtk.Orientation.VERTICAL });
-    mainBox.append(contentSeparator);
-    mainBox.append(stack);
+    function sidebarRow(iconName, labelText, pageName) {
+        const rowBox = new Gtk.Box({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            spacing: 10,
+            margin_top: 8, margin_bottom: 8, margin_start: 12, margin_end: 12
+        });
+
+        const icon = Gtk.Image.new_from_icon_name(iconName);
+        icon.set_pixel_size(18);
+
+        const lbl = new Gtk.Label({ label: labelText, xalign: 0 });
+
+        rowBox.append(icon);
+        rowBox.append(lbl);
+
+        const row = new Gtk.ListBoxRow({ child: rowBox });
+        row._pageName = pageName;
+
+        sidebarList.append(row);
+
+        if (!firstSidebarRow) firstSidebarRow = row;
+
+        return row;
+    }
+
+    const contentScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true });
+    contentScroll.set_child(stack);
+
+    const bodySeparator = new Gtk.Separator({ orientation: Gtk.Orientation.VERTICAL });
+
+    bodyBox.append(sidebarScroll);
+    bodyBox.append(bodySeparator);
+    bodyBox.append(contentScroll);
+    outerBox.append(bodyBox);
 
     /* =========================================================================
-     * PAGE 1: GENERAL (แก้ไขปัญหาหน้าต่างหายและเปิดการขยายโครงสร้าง)
+     * PAGE 1: GENERAL
      * ========================================================================= */
-    const pageGeneral = new Gtk.Box({ 
-        orientation: Gtk.Orientation.VERTICAL, 
-        margin_top: 24, margin_bottom: 24, margin_start: 24, margin_end: 24, 
-        spacing: 16 
+    const pageGeneral = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        margin_top: 24, margin_bottom: 24, margin_start: 28, margin_end: 28,
+        spacing: 16
     });
-    
+
     const chkAlwaysAsk = new Gtk.CheckButton({
         label: I18N.t("always_ask"),
         active: !!localConfig.always_ask
     });
     pageGeneral.append(chkAlwaysAsk);
 
-    // ทำกล่องปุ่มตั้งค่าเริ่มต้นแยกเพื่อให้วาด Layout ได้ถูกต้องชัดเจน
-    const btnDefault = new Gtk.Button({ 
+    const btnDefault = new Gtk.Button({
         label: I18N.t("set_default"),
-        halign: Gtk.Align.START // วางชิดซ้าย ไม่ให้ปุ่มยืดเต็มหน้าจอ
+        halign: Gtk.Align.START
     });
+    btnDefault.add_css_class("panel-btn");
     btnDefault.connect("clicked", () => {
         if (typeof Core.setAsDefaultBrowser === "function") Core.setAsDefaultBrowser();
     });
     pageGeneral.append(btnDefault);
-    
-    stack.add_titled(pageGeneral, "general", I18N.t("general"));
+
+    stack.add_named(pageGeneral, "general");
 
     /* =========================================================================
-     * PAGE 2: APPEARANCE (ลักษณะการแสดงผล)
+     * PAGE 2: APPEARANCE (ตัดตัวเลือก Theme ออก เหลือแค่ขนาดไอคอน)
      * ========================================================================= */
-    const pageAppearance = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 24, margin_bottom: 24, margin_start: 24, margin_end: 24, spacing: 16 });
-    
+    const pageAppearance = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        margin_top: 24, margin_bottom: 24, margin_start: 28, margin_end: 28,
+        spacing: 16
+    });
+
     const rowIconSize = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 12 });
     const lblIconSize = new Gtk.Label({ label: I18N.t("icon_size"), xalign: 0, hexpand: true });
-    const spinIconSize = Gtk.SpinButton.new_with_range(16, 128, 4);
-    spinIconSize.set_value(localConfig.icon_size || 32);
+    const spinIconSize = Gtk.SpinButton.new_with_range(24, 128, 4);
+    spinIconSize.set_value(localConfig.icon_size || 64);
     rowIconSize.append(lblIconSize);
     rowIconSize.append(spinIconSize);
     pageAppearance.append(rowIconSize);
 
-    const rowTheme = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 12 });
-    const lblTheme = new Gtk.Label({ label: I18N.t("theme"), xalign: 0, hexpand: true });
-    const comboTheme = new Gtk.DropDown({
-        model: Gtk.StringList.new([I18N.t("theme_system"), I18N.t("theme_light"), I18N.t("theme_dark")])
-    });
-    if (localConfig.theme === "light") comboTheme.set_selected(1);
-    else if (localConfig.theme === "dark") comboTheme.set_selected(2);
-    else comboTheme.set_selected(0);
-    rowTheme.append(lblTheme);
-    rowTheme.append(comboTheme);
-    pageAppearance.append(rowTheme);
-    
-    stack.add_titled(pageAppearance, "appearance", I18N.t("appearance"));
+    stack.add_named(pageAppearance, "appearance");
 
     /* =========================================================================
      * PAGE 3: BROWSERS
      * ========================================================================= */
-    const pageBrowsers = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 24, margin_bottom: 24, margin_start: 24, margin_end: 24, spacing: 16 });
+    const pageBrowsers = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        margin_top: 24, margin_bottom: 24, margin_start: 28, margin_end: 28,
+        spacing: 12
+    });
     const lblBrowserList = new Gtk.Label({ label: I18N.t("browser_list"), xalign: 0 });
     pageBrowsers.append(lblBrowserList);
 
     const browserListBox = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE });
     browserListBox.add_css_class("boxed-list");
-    
-    const scrollWin = new Gtk.ScrolledWindow({ min_content_height: 220, vexpand: true });
+
+    const scrollWin = new Gtk.ScrolledWindow({ min_content_height: 160, vexpand: true });
     scrollWin.set_child(browserListBox);
     pageBrowsers.append(scrollWin);
 
@@ -125,7 +197,7 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
 
         currentBrowsers.forEach((bPath, index) => {
             const rowBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 12, margin_top: 6, margin_bottom: 6, margin_start: 6, margin_end: 6 });
-            
+
             let displayName = GLib.path_get_basename(bPath);
             let gicon = null;
 
@@ -169,15 +241,15 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
 
     const btnBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 6 });
     const btnAdd = new Gtk.Button({ label: I18N.t("add_browser"), icon_name: "list-add-symbolic" });
+    btnAdd.add_css_class("panel-btn");
     const btnScan = new Gtk.Button({ label: I18N.t("auto_detect"), icon_name: "find-location-symbolic" });
+    btnScan.add_css_class("panel-btn");
     const lblStatus = new Gtk.Label({ label: "", xalign: 0, hexpand: true });
     lblStatus.add_css_class("dim-label");
 
-    // กดปุ่ม ADD BROWSER -> บังคับให้เปิดพาธเริ่มต้นที่ /usr/share/applications
     btnAdd.connect("clicked", () => {
         const fileChooser = new Gtk.FileDialog({ title: I18N.t("add_browser") });
-        
-        // กำหนดโฟลเดอร์เริ่มต้นเป็น /usr/share/applications
+
         let defaultFolder = Gio.File.new_for_path("/usr/share/applications");
         fileChooser.set_initial_folder(defaultFolder);
 
@@ -217,44 +289,100 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
     pageBrowsers.append(btnBox);
 
     updateBrowserListUI();
-    stack.add_titled(pageBrowsers, "browsers", I18N.t("browsers"));
+    stack.add_named(pageBrowsers, "browsers");
 
     /* =========================================================================
      * PAGE 4: LANGUAGE
+     * (ใช้ MenuButton + Popover + ListBox ที่เราคุม CSS เองแทน Gtk.DropDown
+     *  เพราะ Gtk.DropDown ใช้ GtkListView ภายในซึ่งชื่อ CSS node ของแถวไม่แน่นอน
+     *  ทำให้ override สีไม่ได้ผลจริง ส่วน GtkListBoxRow มีชื่อ node "row" ที่แน่นอนตายตัว)
      * ========================================================================= */
-    const pageLanguage = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 24, margin_bottom: 24, margin_start: 24, margin_end: 24, spacing: 12 });
+    const pageLanguage = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        margin_top: 24, margin_bottom: 24, margin_start: 28, margin_end: 28,
+        spacing: 12
+    });
     const lblLangSelect = new Gtk.Label({ label: I18N.t("language_select"), xalign: 0 });
-    
-    const langList = I18N.getLanguages(); 
-    const langNames = langList.map(l => l.name);
-    const comboLanguage = new Gtk.DropDown({ model: Gtk.StringList.new(langNames) });
-    const currentLangIdx = langList.findIndex(l => l.code === localConfig.language);
-    if (currentLangIdx !== -1) comboLanguage.set_selected(currentLangIdx);
+
+    const langList = I18N.getLanguages();
+    let selectedLanguageCode = localConfig.language || (langList[0] ? langList[0].code : "en");
+    const initialLang = langList.find(l => l.code === selectedLanguageCode) || langList[0];
+
+    const langButton = new Gtk.MenuButton({
+        label: initialLang ? initialLang.name : "",
+        halign: Gtk.Align.START
+    });
+    langButton.add_css_class("panel-btn");
+
+    const langPopover = new Gtk.Popover();
+    langPopover.add_css_class("app-popover");
+
+    const langListBox = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE });
+    langListBox.add_css_class("app-popover-list");
+
+    langList.forEach((l) => {
+        const row = new Gtk.ListBoxRow();
+        const lbl = new Gtk.Label({
+            label: l.name, xalign: 0,
+            margin_top: 6, margin_bottom: 6, margin_start: 12, margin_end: 12
+        });
+        row.set_child(lbl);
+        row._langCode = l.code;
+        row._langName = l.name;
+        langListBox.append(row);
+    });
+
+    langListBox.connect("row-activated", (box, row) => {
+        selectedLanguageCode = row._langCode;
+        langButton.set_label(row._langName);
+        langPopover.popdown();
+    });
+
+    langPopover.set_child(langListBox);
+    langButton.set_popover(langPopover);
 
     const lblNotice = new Gtk.Label({ label: `* ${I18N.t("restart_required")}`, xalign: 0, margin_top: 6 });
     lblNotice.add_css_class("dim-label");
 
     pageLanguage.append(lblLangSelect);
-    pageLanguage.append(comboLanguage);
+    pageLanguage.append(langButton);
     pageLanguage.append(lblNotice);
-    stack.add_titled(pageLanguage, "language", I18N.t("language"));
+    stack.add_named(pageLanguage, "language");
+
+    /* =========================================================================
+     * BUILD SIDEBAR ROWS (หลัง add_named ทุกหน้าเสร็จแล้วเพื่อให้สลับหน้าได้ทันที)
+     * ========================================================================= */
+    sidebarRow("preferences-system-symbolic", I18N.t("general"), "general");
+    sidebarRow("preferences-desktop-theme-symbolic", I18N.t("appearance"), "appearance");
+    sidebarRow("web-browser-symbolic", I18N.t("browsers"), "browsers");
+    sidebarRow("preferences-desktop-locale-symbolic", I18N.t("language"), "language");
+
+    sidebarList.connect("row-selected", (list, row) => {
+        if (row && row._pageName) stack.set_visible_child_name(row._pageName);
+    });
+
+    if (firstSidebarRow) sidebarList.select_row(firstSidebarRow);
+    stack.set_visible_child_name("general");
 
     /* =========================================================================
      * BOTTOM ACTION BUTTONS
      * ========================================================================= */
     const footerSeparator = new Gtk.Separator({ orientation: Gtk.Orientation.HORIZONTAL });
-    const actionBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, margin_top: 12, margin_bottom: 12, margin_start: 16, margin_end: 16, spacing: 8, halign: Gtk.Align.END });
+    const actionBox = new Gtk.Box({
+        orientation: Gtk.Orientation.HORIZONTAL,
+        margin_top: 12, margin_bottom: 12, margin_start: 16, margin_end: 16,
+        spacing: 8, halign: Gtk.Align.END
+    });
     const btnCancel = new Gtk.Button({ label: I18N.t("cancel") });
+    btnCancel.add_css_class("panel-btn");
     const btnSave = new Gtk.Button({ label: I18N.t("save") });
+    btnSave.add_css_class("panel-btn");
     btnSave.add_css_class("suggested-action");
 
-    const outerBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
-    outerBox.append(mainBox);
     outerBox.append(footerSeparator);
     outerBox.append(actionBox);
     actionBox.append(btnCancel);
     actionBox.append(btnSave);
-    mainBox.set_vexpand(true);
 
     btnCancel.connect("clicked", () => win.close());
 
@@ -262,13 +390,7 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
         localConfig.always_ask = chkAlwaysAsk.get_active();
         localConfig.icon_size = spinIconSize.get_value_as_int();
 
-        const themeIdx = comboTheme.get_selected();
-        if (themeIdx === 1) localConfig.theme = "light";
-        else if (themeIdx === 2) localConfig.theme = "dark";
-        else localConfig.theme = "system";
-
-        const selectedLangIdx = comboLanguage.get_selected();
-        if (selectedLangIdx !== -1) localConfig.language = langList[selectedLangIdx].code;
+        localConfig.language = selectedLanguageCode;
 
         localConfig.browsers = currentBrowsers;
 

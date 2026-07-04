@@ -195,6 +195,11 @@ function createChooser(url) {
         }
 
         /*
+         * DIVIDER: browsers | settings
+         */
+        root.append(UI.divider());
+
+        /*
          * SETTINGS BUTTON
          */
         const settingsBtn = UI.iconButton(
@@ -216,6 +221,12 @@ function createChooser(url) {
         });
         root.append(settingsBtn);
 
+        /*
+         * DIVIDER: settings | close
+         */
+        /*
+        root.append(UI.divider());
+        */
         /*
          * CLOSE BUTTON
          */
