@@ -4,6 +4,7 @@
  */
 
 const { Gio, GLib , Gtk } = imports.gi;
+const ThemeDetect = imports["theme-detect"].ThemeDetect;
 
 var Core = {
     // ฟังก์ชัน loadConfig และ saveConfig เดิมของคุณ
@@ -122,7 +123,13 @@ var Core = {
 
     openBrowser(info, url) {
         try {
-            info.launch_uris([url], null);
+            if (url) {
+                info.launch_uris([url], null);
+            } else {
+                // ไม่มี URL ส่งมา -> เปิดเบราว์เซอร์แบบเปล่าๆ (หน้าแรก/แท็บว่างของมันเอง)
+                // ไม่ใช้ launch_uris([""], ...) เพราะ "" ไม่ใช่ URI ที่ถูกต้อง บางเบราว์เซอร์จะไม่เปิดให้
+                info.launch([], null);
+            }
         } catch (e) {
             logError(e, "Error launching browser");
         }
@@ -131,9 +138,19 @@ var Core = {
     applyGtkTheme(config) {
         let settings = Gtk.Settings.get_default();
         if (!settings || !config) return;
-        if (config.theme === "dark") {
+
+        let mode = config.theme;
+        if (mode === "system" || !mode) {
+            try {
+                mode = ThemeDetect.getSystemColorScheme();
+            } catch (e) {
+                mode = "dark";
+            }
+        }
+
+        if (mode === "dark") {
             settings.gtk_application_prefer_dark_theme = true;
-        } else if (config.theme === "light") {
+        } else if (mode === "light") {
             settings.gtk_application_prefer_dark_theme = false;
         }
     }

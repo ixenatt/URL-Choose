@@ -145,7 +145,7 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
     stack.add_named(pageGeneral, "general");
 
     /* =========================================================================
-     * PAGE 2: APPEARANCE (ตัดตัวเลือก Theme ออก เหลือแค่ขนาดไอคอน)
+     * PAGE 2: APPEARANCE (ขนาดไอคอน + Theme: System/Light/Dark)
      * ========================================================================= */
     const pageAppearance = new Gtk.Box({
         orientation: Gtk.Orientation.VERTICAL,
@@ -155,11 +155,67 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
 
     const rowIconSize = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 12 });
     const lblIconSize = new Gtk.Label({ label: I18N.t("icon_size"), xalign: 0, hexpand: true });
-    const spinIconSize = Gtk.SpinButton.new_with_range(24, 128, 4);
-    spinIconSize.set_value(localConfig.icon_size || 64);
+    const spinIconSize = Gtk.SpinButton.new_with_range(16, 128, 4);
+    spinIconSize.set_value(localConfig.icon_size || 32);
     rowIconSize.append(lblIconSize);
     rowIconSize.append(spinIconSize);
     pageAppearance.append(rowIconSize);
+
+    /*
+     * ตัวเลือก Theme (System / Light / Dark)
+     * ใช้ MenuButton + Popover + ListBox แบบเดียวกับตัวเลือกภาษา
+     * เพื่อคุม CSS ("row" node) ได้แน่นอน แทน Gtk.DropDown
+     */
+    const rowTheme = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 12 });
+    const lblTheme = new Gtk.Label({ label: I18N.t("theme"), xalign: 0, hexpand: true });
+
+    const themeOptions = [
+        { code: "light", name: I18N.t("theme_light") },
+        { code: "dark", name: I18N.t("theme_dark") }
+    ];
+    // ถ้า config ยังเป็นค่าเก่า "system" (หรือไม่มีค่า) ให้ตั้งต้นตามธีมที่ resolve ไว้จริงตอนนี้
+    let selectedThemeCode = (localConfig.theme === "light" || localConfig.theme === "dark")
+        ? localConfig.theme
+        : UI.getCurrentThemeMode();
+    const initialTheme = themeOptions.find(t => t.code === selectedThemeCode) || themeOptions[0];
+
+    const themeButton = new Gtk.MenuButton({
+        label: initialTheme ? initialTheme.name : "",
+        halign: Gtk.Align.END,
+        hexpand: true
+    });
+    themeButton.add_css_class("panel-btn");
+
+    const themePopover = new Gtk.Popover();
+    themePopover.add_css_class("app-popover");
+
+    const themeListBox = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE });
+    themeListBox.add_css_class("app-popover-list");
+
+    themeOptions.forEach((t) => {
+        const row = new Gtk.ListBoxRow();
+        const lbl = new Gtk.Label({
+            label: t.name, xalign: 0,
+            margin_top: 6, margin_bottom: 6, margin_start: 12, margin_end: 12
+        });
+        row.set_child(lbl);
+        row._themeCode = t.code;
+        row._themeName = t.name;
+        themeListBox.append(row);
+    });
+
+    themeListBox.connect("row-activated", (box, row) => {
+        selectedThemeCode = row._themeCode;
+        themeButton.set_label(row._themeName);
+        themePopover.popdown();
+    });
+
+    themePopover.set_child(themeListBox);
+    themeButton.set_popover(themePopover);
+
+    rowTheme.append(lblTheme);
+    rowTheme.append(themeButton);
+    pageAppearance.append(rowTheme);
 
     stack.add_named(pageAppearance, "appearance");
 
@@ -389,6 +445,7 @@ function open(app, parentWindow, config, Core, onSaveCallback) {
     btnSave.connect("clicked", () => {
         localConfig.always_ask = chkAlwaysAsk.get_active();
         localConfig.icon_size = spinIconSize.get_value_as_int();
+        localConfig.theme = selectedThemeCode;
 
         localConfig.language = selectedLanguageCode;
 

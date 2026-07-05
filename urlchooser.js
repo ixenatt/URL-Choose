@@ -38,7 +38,7 @@ const I18N = imports.i18n.index.I18N;
  * =========================================================
  */
 
-let config = null;
+let config = Core.loadConfig();
 
 /*
  * =========================================================
@@ -47,16 +47,14 @@ let config = null;
  */
 
 const app = new Gtk.Application({
-    application_id: "com.example.urlchooser"
+    application_id: "io.github.ixenatt.urlchooser"
 });
 
 app.connect("startup", () => {
-    UI.installCss();
+    UI.installCss(config && config.theme);
 });
 
 app.connect("activate", () => {
-
-    config = Core.loadConfig();
 
     /*
      * =========================================================
@@ -180,13 +178,12 @@ function createChooser(url) {
 
                 btn.add_css_class("icon-btn");
 
-                // หากไม่มี URL ปุ่มเลือกเบราเซอร์จะทำหน้าที่เป็นแค่พรีวิว (กดแล้วไม่มีผลร้ายแรงหรือกดแล้วแอปปิด)
+                // กดไอคอนแล้วต้องเปิดเบราว์เซอร์เสมอ ไม่ว่าจะมี URL ส่งมาหรือไม่
+                // (ถ้าไม่มี URL จะเปิดเบราว์เซอร์แบบหน้าเปล่า/หน้าแรกของมันเอง)
                 btn.connect("clicked", () => {
-                    if (url) {
-                        Core.openBrowser(b.info, url);
-                        config.last_browser = b.path;
-                        Core.saveConfig(config);
-                    }
+                    Core.openBrowser(b.info, url);
+                    config.last_browser = b.path;
+                    Core.saveConfig(config);
                     app.quit();
                 });
 
@@ -215,6 +212,8 @@ function createChooser(url) {
                 if (refreshedConfig) {
                     config = refreshedConfig;
                     I18N.setLanguage(config.language);
+                    UI.installCss(config.theme);       // สลับสไตล์ (light/dark) ทันทีถ้าธีมถูกเปลี่ยน
+                    Core.applyGtkTheme(config);         // sync ธีมของ GTK widget พื้นฐานด้วย
                     rebuild(); // อัปเดต UI หน้าต่างหลักตามที่ตั้งค่าทันที
                 }
             });
@@ -224,9 +223,8 @@ function createChooser(url) {
         /*
          * DIVIDER: settings | close
          */
-        /*
         root.append(UI.divider());
-        */
+
         /*
          * CLOSE BUTTON
          */

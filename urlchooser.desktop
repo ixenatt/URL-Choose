@@ -1,6 +1,8 @@
 [Desktop Entry]
 Name=URL Chooser
 Exec=/home/xenatt/urlchooser/urlchooser.js %u
+Icon=/home/xenatt/urlchooser/image/urlchooser-icon.png
+StartupWMClass=io.github.ixenatt.urlchooser
 Type=Application
 NoDisplay=false
 Terminal=false

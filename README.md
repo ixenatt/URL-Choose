@@ -57,15 +57,11 @@ sudo pacman -S gjs gtk4 desktop-file-utils
 
 ## 🚀 Installation Guide
 
-The framework gets installed in an isolated directory spacing under `/opt/urlchooser` and populates executable symlinks straight to `/usr/local/bin`.
+The framework gets installed in an isolated directory spacing under `/opt/urlchooser`, populates executable symlinks straight to `/usr/local/bin`, and registers the application icon (`io.github.ixenatt.urlchooser`) into the system's `hicolor` icon theme automatically.
 
 1. Clone this repository locally to your machine:
 ```bash
-<<<<<<< HEAD
-git clone [https://github.com/ixenatt/url-choose.git](https://github.com/ixenatt/url-choose.git)
-=======
-git clone https://github.com/ixenatt/URL-Choose.git
->>>>>>> origin/main
+git clone [https://github.com/yourusername/urlchooser.git](https://github.com/yourusername/urlchooser.git)
 cd urlchooser
 
 ```
@@ -115,12 +111,17 @@ The system installation structure models an isolated execution space under `/opt
 /opt/urlchooser/        # Main application boundaries
 ├── urlchooser.js       # App entry point (orchestrates windows & lifecycle)
 ├── core.js             # System Core (I/O configuration handlers, desktop file parsers, browser launchers)
-├── ui.js               # UI Factory (CSS configuration, design isolation, widgets styling)
+├── ui.js               # Theme-aware CSS loader (resolves System/Light/Dark, installs the right stylesheet)
+├── ui-dark.js           # Dark theme stylesheet
+├── ui-light.js          # Light theme stylesheet
+├── theme-detect.js     # Desktop-agnostic system light/dark detection (XDG Desktop Portal + fallbacks)
 ├── settings.js         # Responsive Multi-page Sidebar dashboard controller
-├── image/              # Application screenshots directory
+├── image/              # Application screenshots + app icon
 │   ├── 1.png
 │   ├── 2.png
-│   └── 3.png
+│   ├── 3.png
+│   ├── urlchooser-icon.png       # App icon (rounded corners, transparent background)
+│   └── urlchooser-icon-512.png   # 512×512 export for icon theme installation
 └── i18n/               # Internationalization module directory
     ├── index.js        # Translation driver core
     ├── en.js           # English resource mappings
@@ -132,7 +133,16 @@ The system installation structure models an isolated execution space under `/opt
 /usr/share/applications/
 └── urlchooser.desktop  # System integration mapping x-scheme-handler/http(s)
 
+/usr/share/icons/hicolor/512x512/apps/
+└── io.github.ixenatt.urlchooser.png  # Installed app icon (resolved by GTK application_id)
+
 ```
+
+---
+
+## 🏷️ Application Identity
+
+The GTK application is registered under the ID **`io.github.ixenatt.urlchooser`**. This is a standard reverse-DNS `GApplication` ID used internally by GTK for D-Bus registration, single-instance enforcement, and desktop/taskbar window grouping. `install.sh` uses this same ID as the installed icon filename and the `.desktop` file's `Icon=` / `StartupWMClass=` fields, so the desktop environment can correctly associate the app icon with its running window.
 
 ---
 
@@ -143,5 +153,3 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](https://www.google.com/search?q=https://www.gnu.org/licenses/gpl-3.0.html) for more details.
 
 See the [LICENSE](https://www.google.com/search?q=LICENSE) file for the full license text.
-
-```
